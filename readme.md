@@ -83,3 +83,9 @@ btn.onclick = () => {
     setCount(getCount() + 1);
 }
 ```
+
+## Component library support
+
+we are just testing shoelace support.
+
+example: https://antocorr.github.io/bubble/examples/reactivity/shoelace.html
