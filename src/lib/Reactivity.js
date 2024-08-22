@@ -71,6 +71,14 @@ function replace(component, child, textArr, reactiveIndexes, moreData = {}) {
  * }}
  */
 export function createComponent(original, data) {
+    let props = {};
+    if (data && data.props) {
+        props = data.props;
+        if (typeof props == "function") {
+            props = props();
+        }
+        delete data.props;
+    }
     const component = {
         $element: null,
         appendTo: (parent) => {
@@ -106,11 +114,12 @@ export function createComponent(original, data) {
                 component.data = component.data();
             }
             component._data = {};
-            for (const key in component.data) {
-                component._data[key] = Signal(component.data[key]);
-                if (Array.isArray(component.data[key])) {
-                    for (let i = 0; i < component.data[key].length; i++) {
-                        component._data[key].value[i] = Signal(component.data[key][i]);
+            const data = { ...component.data, ...props };
+            for (const key in data) {
+                component._data[key] = Signal(data[key]);
+                if (Array.isArray(data[key])) {
+                    for (let i = 0; i < data[key].length; i++) {
+                        component._data[key].value[i] = Signal(data[key][i]);
                     }
                 }
             }

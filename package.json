@@ -2,12 +2,13 @@
   "name": "bubble",
   "version": "1.0.0",
   "description": "",
-  "main": "./dist/bubble.js",
+  "main": "dist/bubble.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
-    "build": "esbuild ./src/index.js --bundle --sourcemap --minify --format=esm --outfile=./dist/bubble.js"
+    "build": "esbuild ./src/index.js --bundle --sourcemap --minify --format=esm --outfile=./dist/bubble.js",
+    "build-no-min": "esbuild ./src/index.js --bundle --sourcemap --format=esm --outfile=./dist/bubble.js"
   },
   "author": "",
   "license": "ISC",

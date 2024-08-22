@@ -1,4 +1,9 @@
 let current;
+/**
+ * 
+ * @param {*} initialValue 
+ * @returns {[function(): *, function(*): void, function(): void]}
+ */
 export function createSignal(initialValue) {
     let value = initialValue;
     const
@@ -11,13 +16,13 @@ export function createSignal(initialValue) {
         value = newValue;
         refresh();
     }
-    function read() {
+    function get() {
         if (current) {            
             subscribers.push(current)
         }
         return value;
     }
-    return [read, set, refresh]
+    return [get, set, refresh]
 }
 export function effect(fn) {
     current = fn;
@@ -25,17 +30,17 @@ export function effect(fn) {
     current = null;
 }
 class SignalObject{
-    read;
+    get;
     set;
     refresh;
     constructor(value){
-        const [read, set, refresh] = createSignal(value);
-        this.read = read;
+        const [get, set, refresh] = createSignal(value);
+        this.get = get;
         this.set = set;
         this.refresh = refresh;
     }
     get value(){
-        return this.read();
+        return this.get();
     }
     set value(newValue){
         this.set(newValue);
