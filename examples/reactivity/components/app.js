@@ -1,5 +1,5 @@
-//import { createComponent } from "../../../src/index.js";
-import { createComponent } from "../../../dist/bubble.js";
+import { createComponent } from "../../../src/index.js";
+// import { createComponent } from "../../../dist/bubble.js";
 const App = {
     template() {
         /* html */
