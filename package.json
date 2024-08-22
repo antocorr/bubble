@@ -1,0 +1,17 @@
+{
+  "name": "bubble",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "build": "esbuild ./src/index.js --bundle --sourcemap --minify --format=esm --outfile=./dist/bubble.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "0.23.1"
+  }
+}
