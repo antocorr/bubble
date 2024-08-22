@@ -96,10 +96,9 @@ export function createComponent(original, data) {
             component.refs[e.getAttribute('ref')] = e;
         });
         [...component.$element.querySelectorAll('[-x-onclick]')].forEach(e => {
-            const ev2 = eval;
             const _this_component = component;
             const fn = e.getAttribute('-x-onclick').replace('this.', '_this_component.');
-            e.onclick = () => ev2(fn);
+            e.onclick = () => eval(fn);
         });        
         //traverse all elements that contain {{
         
