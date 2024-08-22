@@ -30,7 +30,6 @@ function prepareForReplace(txt) {
             reactiveIndexes.push(i);
         }
     }
-    console.log(textArr, reactiveIndexes);
     return [textArr, reactiveIndexes];
 }
 /**
@@ -44,7 +43,7 @@ function replace(component, child, textArr, reactiveIndexes, moreData = {}) {
     let newText = '';
     const data = { ...component._data, ...moreData };
     if (Object.keys(moreData).length) {
-        console.log('moreData', moreData);
+        // console.log('moreData', moreData);
     }
     for (let i = 0; i < textArr.length; i++) {        
         if (reactiveIndexes.includes(i)) {
@@ -110,7 +109,6 @@ export function createComponent(original, data) {
             for (const key in component.data) {
                 component._data[key] = Signal(component.data[key]);
                 if (Array.isArray(component.data[key])) {
-                    console.log("here we go", key)
                     for (let i = 0; i < component.data[key].length; i++) {
                         component._data[key].value[i] = Signal(component.data[key][i]);
                     }
@@ -153,7 +151,6 @@ export function createComponent(original, data) {
             const key = parts[1];
             const itemkey = parts[0];
             const [textArr, reactiveIndexes] = prepareForReplace(e.textContent);
-            console.log('>>>>key', key);
             const parent = e.parentElement;
             //remove all nodes from parent
             effect(() => {
@@ -165,7 +162,6 @@ export function createComponent(original, data) {
                     for (const d of data) {
                         const clone = e.cloneNode(true);
                         clone.removeAttribute('x-for');
-                        console.log('>>>>clone', clone.textContent);
                         replace(component, clone, textArr, reactiveIndexes, { [itemkey]: d });
                         parent.appendChild(clone);
                     }

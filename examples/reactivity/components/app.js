@@ -43,7 +43,6 @@ const App = {
     },
     addItem() {
         this._data.items.push(this._data.newItem.value);
-        console.log("suoooo", this._data.items.value);
     }
 }
 
