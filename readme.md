@@ -179,6 +179,17 @@ Component methods, data, and props take precedence over globals with the same na
 <li x-for="(category, key) in categories">{{ key }} — {{ category.label }}</li>
 ```
 
+#### Keyed loops
+
+By default `x-for` re-renders the whole list on any change. Add a `:key` to reconcile by key instead: reused items keep their DOM nodes, child component state, focus, and unmanaged input values across reorders. The item is exposed as a signal, so bindings update in place when the same key receives new data.
+
+```html
+<li x-for="item in items" :key="item.id">{{ item.label }}</li>
+<li x-for="(item, index) in items" :key="item.id">{{ index }} — {{ item.label }}</li>
+```
+
+`:key` is optional — omit it to keep the simple full re-render behavior. It applies to array loops.
+
 ### Easy routing included
 
 TinyBubble ships with a tiny router so you can wire navigation without extra deps. Declare your routes, drop `<router-link>` and `<router-view>` into your layout, and TinyBubble handles hash/history navigation plus optional persistent pages.

@@ -1,6 +1,25 @@
 import { injectCodeBlocks } from '../components/CodeBlock.js'
 
 const blocks = {
+  reactiveRoutes: {
+    code: `import { createRouter, Signal } from 'tinybubble'
+
+const isLoggedIn = Signal(false)
+
+// 'routes' can be a function instead of an array.
+// It is re-evaluated on every route resolution, so it can
+// react to signals — no extra router API needed.
+export const router = createRouter({
+  mode: 'hash',
+  routes: () => isLoggedIn.value
+    ? [...publicRoutes, ...privateRoutes]
+    : publicRoutes,
+})
+
+// Flipping the signal re-resolves routes, even without navigating
+isLoggedIn.value = true`,
+    lang: 'javascript', filename: 'router.js',
+  },
   watchRoute: {
     code: `import { globals, watch } from 'tinybubble'
 
@@ -147,7 +166,20 @@ export default {
     return /*html*/`
       <article class="prose dark:prose-invert max-w-none">
         <h1>Dynamic Routes</h1>
-        <p class="lead">Advanced router patterns: watching route changes, query params, active links, and functional page components.</p>
+        <p class="lead">Advanced router patterns: reactive route tables, watching route changes, query params, active links, and functional page components.</p>
+
+        <h2>Reactive routes — <code>routes</code> as a function</h2>
+        <p>
+          <code>routes</code> accepts a function instead of an array. It runs inside the router's own reactive
+          effect and is re-evaluated on every route resolution, so any signal it reads (e.g. auth state) makes
+          route visibility reactive — routes update even without navigating. Keep the function synchronous and
+          cheap; it can run more than once per resolution.
+        </p>
+        <div data-code="reactiveRoutes"></div>
+        <p>
+          Note: with the function form, <code>router.routes</code> is that function, not a live array — the
+          in-place mutation trick (<code>router.routes.push(...)</code>) only works when <code>routes</code> is a plain array.
+        </p>
 
         <h2>Watching route changes</h2>
         <p>Because <code>$route</code> is a signal you can <code>watch</code> it — useful when the same component handles multiple param values.</p>

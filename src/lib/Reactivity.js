@@ -169,6 +169,7 @@ function parseFor(attr) {
  * Shared by `x-for` on a normal element and `x-for` on a component root.
  */
 function runForEffect(tpl, parsed, component, localScope, bindNodeFn) {
+    if (parsed.keyExpr) return runKeyedForEffect(tpl, parsed, component, localScope, bindNodeFn);
     const { itemKey, indexKey, listExpr } = parsed;
     let renderedItems = [];
     let childDisposers = [];
@@ -207,10 +208,73 @@ function runForEffect(tpl, parsed, component, localScope, bindNodeFn) {
     });
 }
 
+/**
+ * Keyed list-render: reuse DOM nodes and child effects across list changes,
+ * preserving each item's state. The item is exposed as a Signal so bindings
+ * re-track when the same key receives new data — no re-bind, no recreate.
+ */
+function runKeyedForEffect(tpl, parsed, component, localScope, bindNodeFn) {
+    const { itemKey, indexKey, listExpr, keyExpr } = parsed;
+    let entries = new Map();   // key -> { nodes, disposers, itemSig, indexSig }
+
+    effect(() => {
+        const currentScope = buildScope(component, localScope);
+        let list = listExpr ? evaluate(listExpr, currentScope, component) : [];
+        if (list instanceof SignalObject) list = list.value;
+        if (!Array.isArray(list)) list = [];
+
+        const anchor = tpl.anchor;
+        const parent = anchor.parentNode;
+        const next = new Map();
+
+        list.forEach((itemData, idx) => {
+            const keyScope = indexKey
+                ? { ...localScope, [itemKey]: itemData, [indexKey]: idx }
+                : { ...localScope, [itemKey]: itemData };
+            const key = evaluate(keyExpr, keyScope, component);
+
+            let entry = entries.get(key);
+            if (entry) {
+                entry.itemSig.value = itemData;              // reuse: child bindings re-track
+                if (entry.indexSig) entry.indexSig.value = idx;
+                entries.delete(key);
+            } else {
+                const itemSig = Signal(itemData);
+                const indexSig = indexKey ? Signal(idx) : null;
+                const scope = indexKey
+                    ? { ...localScope, [itemKey]: itemSig, [indexKey]: indexSig }
+                    : { ...localScope, [itemKey]: itemSig };
+                const disposers = [];
+                const nodes = insertClone(tpl, component, scope, bindNodeFn, disposers);
+                entry = { nodes, disposers, itemSig, indexSig };
+            }
+            entry.nodes.forEach(n => parent.insertBefore(n, anchor));   // move into order
+            next.set(key, entry);
+        });
+
+        entries.forEach(e => {                                          // leftovers were removed
+            e.disposers.forEach(d => d());
+            e.nodes.forEach(n => n.remove());
+        });
+        entries = next;
+    });
+
+    registerDispose(() => {
+        entries.forEach(e => {
+            e.disposers.forEach(d => d());
+            e.nodes.forEach(n => n.remove());
+        });
+    });
+}
+
 export function handleFor(el, component, localScope, bindNodeFn) {
     if (!el.hasAttribute('x-for')) return false;
+    const keyExpr = el.getAttribute(':key');
+    el.removeAttribute(':key');                 // don't let the attr binder process it
     const tpl = extractTemplate(el, 'x-for');
-    runForEffect(tpl, parseFor(el.getAttribute('x-for')), component, localScope, bindNodeFn);
+    const parsed = parseFor(el.getAttribute('x-for'));
+    parsed.keyExpr = keyExpr;
+    runForEffect(tpl, parsed, component, localScope, bindNodeFn);
     return true;
 }
 
@@ -263,7 +327,10 @@ function renderRootDirective(component, rootEl, directive, anchor, bindNodeFn) {
         attrName: directive
     };
     if (directive === 'x-for') {
-        runForEffect(tpl, parseFor(rootEl.getAttribute('x-for')), component, {}, bindNodeFn);
+        const parsed = parseFor(rootEl.getAttribute('x-for'));
+        parsed.keyExpr = rootEl.getAttribute(':key');
+        rootEl.removeAttribute(':key');
+        runForEffect(tpl, parsed, component, {}, bindNodeFn);
     } else {
         runIfEffect(tpl, rootEl.getAttribute('x-if'), component, {}, bindNodeFn);
     }

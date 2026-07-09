@@ -129,6 +129,7 @@ Rules:
 | `x-for="item in items"` | Loop |
 | `x-for="(item, index) in items"` | Loop with index |
 | `x-for="(value, key) in object"` | Object loop with key |
+| `x-for="item in items" :key="item.id"` | Keyed loop — reconcile by key, reuse nodes |
 | `ref="name"` | DOM ref → `this.refs.name` |
 
 **Critical caveats:**
@@ -142,6 +143,7 @@ Rules:
 - `x-show` and `x-hide` only toggle display; child components still mount and run lifecycle hooks
 - **`{{ }}` in prose HTML:** if a template contains `{{ }}` as literal display text (not a binding), TinyBubble will try to evaluate it. Use `{<wbr>{ expr }<wbr>}` to break the pattern without changing visual output
 - Use `<template x-if="...">` to conditionally render multiple sibling elements without a wrapper div
+- `x-for` without `:key` rebuilds the whole list on every change (loses focus, input state, child component state). Add `:key="item.id"` to reconcile by key: nodes are reused and moved, the item becomes a signal so bindings update in place. Use a stable, unique key — index is a poor key when the list reorders. `:key` is array-only; object loops already key by their property name
 
 ---
 

@@ -44,7 +44,10 @@ export default {
 <li x-for="item in items">{{ item.name }}</li>
 <li x-for="(item, index) in items">{{ index }}: {{ item.name }}</li>
 <li x-for="(value, key) in record">{{ key }}: {{ value.label }}</li>
+<li x-for="item in items" :key="item.id">{{ item.name }}</li>
 ```
+
+Add `:key="expr"` to an array `x-for` for keyed reconciliation: reused items keep their DOM nodes, child state, focus, and input values across reorders, and the item becomes a signal so bindings update in place. Without `:key`, the list is fully re-rendered on every change.
 
 ## Attribute Binding
 

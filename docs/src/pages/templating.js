@@ -119,6 +119,17 @@ data() {
 </template>`,
     lang: 'html',
   },
+  xforKeyed: {
+    code: `<!-- Without :key, the whole list rebuilds on every change -->
+<li x-for="todo in todos">{{ todo.text }}</li>
+
+<!-- With :key, items are reconciled by key — nodes are reused and moved -->
+<li x-for="todo in todos" :key="todo.id">
+  {{ todo.text }}
+  <input>  <!-- typed value survives reorders -->
+</li>`,
+    lang: 'html',
+  },
   xforReactive: {
     code: `// Assign a new array to trigger re-render
 addTodo() {
@@ -226,6 +237,15 @@ export default {
         <h3>Reactive list updates</h3>
         <p>Assign a new array to the signal — TinyBubble re-renders the list.</p>
         <div data-code="xforReactive"></div>
+
+        <h3>Keyed loops — <code>:key</code></h3>
+        <p>
+          By default <code>x-for</code> rebuilds the whole list on any change. Add <code>:key</code> to
+          reconcile by key instead: reused items keep their DOM nodes, child component state, focus, and
+          unmanaged input values across reorders. The item is exposed as a signal, so bindings update in
+          place when the same key receives new data. <code>:key</code> is optional and applies to array loops.
+        </p>
+        <div data-code="xforKeyed"></div>
 
         <h2>Template refs — <code>ref</code></h2>
         <p>Get a direct reference to a DOM element via <code>this.refs.name</code>.</p>
