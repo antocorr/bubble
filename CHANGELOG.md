@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.0] - 2026-06-22
+
+### Added
+- Added keyed list rendering: pass `:key="expr"` on an `x-for` element to reconcile by key instead of rebuilding. Reused items keep their DOM nodes, child component state, focus, and unmanaged input values across reorders; the item is exposed as a signal so bindings re-track when the same key receives new data. Without `:key`, `x-for` keeps its previous full re-render behavior.
+- Added integration tests covering keyed reorder node identity, preserved input state, and content updates on same-key data changes.
+
+## [1.3.1] - 2026-07-09
+
+### Fixed
+- Fixed hash-mode router to correctly parse query strings from the hash itself (e.g., `#/foo/bar?scroll=1224`). Query params are now read from the hash content rather than relying on `window.location.search`, making them work independently of real URL query strings.
+
+### Changed
+- Optimized `Router.js`: extracted duplicated path/query logic into `hashParts()` helper and consolidated href construction into `toHref()` function, reducing bundle size.
+
 ## [1.3.0] - 2026-06-18
 
 ### Added
