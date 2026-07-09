@@ -152,25 +152,6 @@ effect(() => {
 });
 ```
 
-### Global template helpers via globals
-
-Register any function once and use it in every component template without importing it per-component.
-
-```javascript
-import { globals } from "tinybubble";
-import { t } from "./i18n.js";
-
-globals.t = t;
-```
-
-```html
-<!-- inside any component template -->
-<p>{{ t('welcome_message') }}</p>
-<button :title="t('save')">Save</button>
-```
-
-Component methods, data, and props take precedence over globals with the same name.
-
 ### Loops over arrays and objects
 
 ```html
