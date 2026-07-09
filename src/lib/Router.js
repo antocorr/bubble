@@ -1,5 +1,5 @@
 // bubble-router.js
-import { html, effect, createSignal, createComponent, globals, Signal, SignalObject } from '../index.js';
+import { html, effect, createSignal, createComponent, globals, Signal } from '../index.js';
 
 export function createRouter({ mode = 'history', base = '/', routes = [], srcBase = null }) {
     const resolvedSrcBase = srcBase
@@ -19,37 +19,47 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
             return src;
         }
     }
-    // normalizza un path in relazione al base
+    // normalize a path relative to base
     function stripBase(path) {
         if (!base || base === '/') return path;
         return path.startsWith(base) ? path.slice(base.length) || '/' : null;
     }
 
-    // legge il “path corrente” da URL (hash o history)
+    // splits the hash content into [path, query]: in hash mode the query string
+    // lives inside the hash itself (e.g. #/foo/bar?hello=true), not in location.search
+    function hashParts() {
+        const raw = window.location.hash.slice(1) || '/';
+        const qIndex = raw.indexOf('?');
+        return qIndex === -1 ? [raw, ''] : [raw.slice(0, qIndex), raw.slice(qIndex + 1)];
+    }
+
+    // current "path" from the URL (hash or history), without the query string
     function getLocation() {
-        if (mode === 'hash') {
-            return window.location.hash.slice(1) || '/';
-        } else {
-            return stripBase(window.location.pathname) || '/';
-        }
+        return mode === 'hash' ? hashParts()[0] : (stripBase(window.location.pathname) || '/');
+    }
+
+    function getLocationQuery() {
+        return mode === 'hash' ? hashParts()[1] : window.location.search;
     }
 
     const [getDestination, setDestination] = createSignal(getLocation());
 
-    // quando cambia la history/hash, aggiorna il segnale
+    // when history/hash changes, update the signal
     const popEvt = mode === 'hash' ? 'hashchange' : 'popstate';
     window.addEventListener(popEvt, () => setDestination(getLocation()));
 
-    // funzione per navigare via JS
-    function navigate(to) {
-        const full = mode === 'hash'
+    function toHref(to) {
+        return mode === 'hash'
             ? `#${to}`
             : base.replace(/\/$/, '') + (to.startsWith('/') ? to : '/' + to);
+    }
 
+    // function to navigate via JS
+    function navigate(to) {
         if (mode === 'hash') {
             window.location.hash = to;
         } else {
-            history.pushState(null, '', full);
+            history.pushState(null, '', toHref(to));
             setDestination(getLocation());
         }
     }
@@ -58,11 +68,7 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
         if (typeof to !== 'string') {
             return tagToRouterLink(obj);
         }
-        const href = mode === 'hash'
-            ? `#${to}`
-            : base.replace(/\/$/, '') + (to.startsWith('/') ? to : '/' + to);
-
-        const a = html(`<a href="${href}">${children}</a>`);
+        const a = html(`<a href="${toHref(to)}">${children}</a>`);
         a.addEventListener('click', e => {
             e.preventDefault();
             navigate(to);
@@ -81,14 +87,14 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
         });
         return RouterLink({ to, children, ...attrs });
     }
-    // Helper: converte path "/user/:id" in regex e estrae parametri
-    // Supporta anche parametri opzionali ":id?"
+    // Helper: converts path "/user/:id" into a regex and extracts params
+    // Also supports optional params ":id?"
     function matchRoute(routePath, currentPath) {
         if (routePath === '*') {
             return { params: {} };
         }
 
-        // Se non ci sono parametri dinamici, match esatto
+        // If there are no dynamic params, exact match
         if (!routePath.includes(':')) {
             return routePath === currentPath ? { params: {} } : null;
         }
@@ -101,8 +107,7 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
             }
 
             const isOptional = segment.endsWith('?');
-            const key = segment.slice(1, isOptional ? -1 : undefined);
-            paramNames.push({ key, optional: isOptional });
+            paramNames.push(segment.slice(1, isOptional ? -1 : undefined));
 
             return isOptional ? '(?:/([^/]+))?' : '/([^/]+)';
         });
@@ -114,12 +119,29 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
 
         const params = {};
         match.slice(1).forEach((val, i) => {
-            const descriptor = paramNames[i];
-            if (!descriptor) return;
-            params[descriptor.key] = val;
+            if (paramNames[i]) params[paramNames[i]] = val;
         });
         return { params };
     }
+
+    function resolveRoute(current) {
+        const routesArray = typeof routes === 'function' ? routes() : routes;
+        for (const r of routesArray || []) {
+            const m = matchRoute(r.path, current);
+            if (m) return { match: r, params: m.params };
+        }
+        return { match: null, params: {} };
+    }
+
+    effect(() => {
+        const current = getDestination();
+        const resolved = resolveRoute(current);
+        routeSignal.value = {
+            path: current,
+            params: resolved.params,
+            query: Object.fromEntries(new URLSearchParams(getLocationQuery()))
+        };
+    });
 
     const componentMemory = new Map();
     // component <RouterView/>
@@ -130,19 +152,9 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
 
         effect(async () => {
             const current = getDestination();
-
-            // Trova la rotta corrispondente
-            let match = null;
-            let params = {};
-
-            for (const r of routes) {
-                const m = matchRoute(r.path, current);
-                if (m) {
-                    match = r;
-                    params = m.params;
-                    break;
-                }
-            }
+            const resolved = resolveRoute(current);
+            const match = resolved.match;
+            const params = resolved.params;
 
             // Destroy previous component (skip persistent — it stays alive in memory)
             if (mountedComp && !mountedIsPersistent) mountedComp.$destroy();
@@ -157,16 +169,9 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
                         const compModule = await import(src);
                         match.component = compModule.default || compModule;
                     } catch (e) {
-                        return outlet;
+                        return;
                     }
                 }
-
-                // Aggiorna il signal globale (tutte le istanze si aggiornano automaticamente)
-                routeSignal.value = {
-                    path: current,
-                    params,
-                    query: Object.fromEntries(new URLSearchParams(window.location.search))
-                };
 
                 if (typeof match.component != "function" && match.component.template) {
                     let comp;
@@ -179,15 +184,14 @@ export function createRouter({ mode = 'history', base = '/', routes = [], srcBas
                         }
                     }
                     outlet.appendChild(comp.$element);
+                    comp._renderRoot?.();
                     mountedComp = comp;
                     mountedIsPersistent = !!match.persistent;
                 } else {
-                    // Componente funzionale
+                    // Functional component
                     outlet.appendChild(match.component({ $route: routeSignal.value }));
                 }
-                return outlet;
             }
-            return outlet;
         });
         return outlet;
     }

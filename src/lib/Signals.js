@@ -9,7 +9,12 @@ function flushEffects() {
     const batch = [...pendingEffects];
     pendingEffects.clear();
     for (const fn of batch) {
-        if (!fn._disposed) fn();
+        if (!fn._disposed) {
+            const prev = current;
+            current = fn;
+            fn();
+            current = prev;
+        }
     }
 }
 
@@ -70,6 +75,16 @@ export function effect(fn) {
     return dispose;
 }
 
+export function untrack(fn) {
+    const prev = current;
+    current = null;
+    try {
+        return fn();
+    } finally {
+        current = prev;
+    }
+}
+
 export class SignalObject {
     _value;
     _subscribers = new Set();
@@ -78,18 +93,10 @@ export class SignalObject {
         this._initValue(initialValue);
     }
 
-    _initValue(value) {
-        if (value && typeof value === "object") {
-            this._value = new Proxy(value, {
-                set: (target, prop, val) => {
-                    target[prop] = val;
-                    this.refresh();
-                    return true;
-                }
-            });
-        } else {
-            this._value = value;
-        }
+    _initValue(v) {
+        this._value = v && typeof v === "object"
+            ? new Proxy(v, { set: (t, p, val) => (t[p] = val, this.refresh(), true) })
+            : v;
     }
 
     /**
@@ -148,7 +155,7 @@ export function watch(source, cb) {
     let initialized = false;
     effect(() => {
         const val = typeof source === "function" ? source() : source.value;
-        if (initialized) cb(val, oldValue);
+        if (initialized) untrack(() => cb(val, oldValue));
         oldValue = val;
         initialized = true;
     });

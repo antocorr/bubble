@@ -4,8 +4,15 @@ const blocks = {
   anatomy: {
     code: `export default {
   name: 'MyCard',
+  compId: 'my-card',            // de-dupe inline CSS
   props: ['title', 'subtitle'],   // declared props
   emits: ['select', 'close'],     // declared emits
+
+  style() {
+    return \`
+      .my-card { border-radius: 12px; }
+    \`
+  },
 
   data() {
     return { expanded: false }    // each key → Signal
@@ -122,21 +129,40 @@ export default {
   template() {
     return \`
       <div>
-        <button @click="this.data.show.value = true">Delete</button>
+        <button @click="openConfirm">Delete</button>
         <confirm-dialog
           x-if="show"
           message="Are you sure?"
           @confirm="onConfirm"
-          @cancel="this.data.show.value = false"
+          @cancel="closeConfirm"
         />
       </div>
     \`
   },
-  onConfirm() {
+  openConfirm() {
+    this.data.show.value = true
+  },
+  closeConfirm() {
     this.data.show.value = false
+  },
+  onConfirm() {
+    this.closeConfirm()
     doDelete()
   },
 }`,
+    lang: 'javascript',
+  },
+  emitsCamel: {
+    code: `// Child declares and emits camelCase
+export default {
+  emits: ['reservationUpdate'],
+  save() {
+    this.emit('reservationUpdate', { status: 'saved' })
+  },
+}
+
+<!-- Parent listens with kebab-case -->
+<reservation-card @reservation-update="handleReservationUpdate"></reservation-card>`,
     lang: 'javascript',
   },
   lifecycle: {
@@ -162,6 +188,37 @@ export default {
   },
 }`,
     lang: 'javascript',
+  },
+  styles: {
+    code: `export default {
+  name: 'ProfileCard',
+  compId: 'profile-card',
+
+  // Inline CSS. Injected once per compId into document.head.
+  style() {
+    return \`
+      .profile-card {
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        padding: 16px;
+      }
+    \`
+  },
+
+  // External CSS. Appended once per stable URL as a <link rel="stylesheet">.
+  styleURL: new URL('./ProfileCard.css', import.meta.url).href,
+
+  template() {
+    return \`
+      <article class="profile-card">
+        <h2>{{ name }}</h2>
+      </article>
+    \`
+  },
+
+  data() { return { name: 'Ken' } },
+}`,
+    lang: 'javascript', filename: 'components/ProfileCard.js',
   },
   childComp: {
     code: `import Avatar from './Avatar.js'
@@ -238,6 +295,7 @@ export default {
           A TinyBubble component is a plain JavaScript object — no class syntax, no decorators.
           Just data, methods, and a template string.
         </p>
+        <blockquote>Each <code>template()</code> must return one root element. Empty templates throw <code>TinyBubble template must return one root element</code>.</blockquote>
 
         <h2>Anatomy</h2>
         <div data-code="anatomy"></div>
@@ -267,11 +325,24 @@ export default {
         <h2>emit — component events</h2>
         <p>Declare emittable events in <code>emits</code> and fire them with <code>this.emit(name, ...args)</code>.</p>
         <div data-code="emitsChild"></div>
-        <p>Parent listens with <code>@eventName</code> on the component tag:</p>
+        <p>Parent listens on the component tag. For camelCase emits, prefer kebab-case listeners in HTML.</p>
         <div data-code="emitsParent"></div>
+        <div data-code="emitsCamel"></div>
 
         <h2>Lifecycle hooks</h2>
         <div data-code="lifecycle"></div>
+
+        <h2>style and styleURL</h2>
+        <p>
+          Use <code>style</code> for component CSS and <code>styleURL</code> for an external stylesheet.
+          Both are processed when the component is created and injected into <code>document.head</code>.
+        </p>
+        <div data-code="styles"></div>
+        <p>
+          Add a stable <code>compId</code> when using <code>style</code>, so TinyBubble does not inject
+          the same inline CSS more than once. For <code>styleURL</code>, use a stable URL string for shared CSS.
+          Use reactive <code>:class</code> or <code>:style</code> for state-dependent visual changes.
+        </p>
 
         <h2>Child components</h2>
         <p>Register sub-components in the <code>components</code> map. Key = lowercase hyphenated tag name.</p>
